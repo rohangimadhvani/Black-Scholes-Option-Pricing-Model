@@ -16,13 +16,29 @@ class BlackScholes:
         self.volatility = volatility
         self.interest_rate = interest_rate
 
+    def run(self):
+        time_to_maturity = self.time_to_maturity
+        strike = self.strike
+        current_price = self.current_price
+        volatility = self.volatility
+        interest_rate = self.interest_rate
+
+        d1 = (
+            log(current_price / strike) +
+            (interest_rate + 0.5 * volatility ** 2) * time_to_maturity
+        ) / (
+            volatility * sqrt(time_to_maturity)
+        )
+        d2 = d1 - volatility * sqrt(time_to_maturity)
+
+        print(d1, d2)
+        
 if __name__ == "__main__":
     option = BlackScholes(
         time_to_maturity=2,
-        strike=90,
+        strike=100,
         current_price=100,
         volatility=0.2,
         interest_rate=0.05,
     )
-    print(option.strike)
-    print(option.volatility)
+    option.run()
