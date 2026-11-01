@@ -31,14 +31,25 @@ class BlackScholes:
         )
         d2 = d1 - volatility * sqrt(time_to_maturity)
 
-        print(d1, d2)
+        call_price = current_price * norm.cdf(d1) - (
+            strike * exp(-(interest_rate * time_to_maturity)) * norm.cdf(d2)
+        )
+        put_price = (
+            strike * exp(-(interest_rate * time_to_maturity)) * norm.cdf(-d2)
+        ) - current_price * norm.cdf(-d1)
+
+        self.call_price = call_price
+        self.put_price = put_price
         
 if __name__ == "__main__":
     option = BlackScholes(
         time_to_maturity=2,
-        strike=100,
+        strike=90,
         current_price=100,
         volatility=0.2,
         interest_rate=0.05,
     )
+
     option.run()
+    print("Call price:", option.call_price)
+    print("Put price:", option.put_price)
