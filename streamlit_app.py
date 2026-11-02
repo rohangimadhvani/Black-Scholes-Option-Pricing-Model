@@ -57,6 +57,9 @@ st.markdown("""
 with st.sidebar:
     st.title("📊 Black-Scholes Model")
 
+    st.write("`Created by:`")
+    st.markdown("Rohangi Madhvani (https://github.com/rohangimadhvani)")
+
     current_price = st.number_input("Current Asset Price", value=100.0)
     strike = st.number_input("Strike Price", value=100.0)
     time_to_maturity = st.number_input("Time to Maturity (Years)", value=1.0)
