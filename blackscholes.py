@@ -1,3 +1,5 @@
+"""Black-Scholes pricing and Greeks for European options (no dividends)."""
+
 from numpy import exp, log, sqrt
 from scipy.stats import norm
 
@@ -13,6 +15,7 @@ class BlackScholes:
         volatility: float,
         interest_rate: float,
     ):
+        """Store the five inputs. Time is in years; volatility and rate are yearly decimals."""
         self.time_to_maturity = time_to_maturity  # T, in years
         self.strike = strike                      # K
         self.current_price = current_price        # S
@@ -43,6 +46,7 @@ class BlackScholes:
 
     @property
     def call_price(self) -> float:
+        """Black-Scholes price of a European call."""
         return (
             self.current_price * norm.cdf(self.d1)
             - self.strike * self.discount_factor * norm.cdf(self.d2)
@@ -50,6 +54,7 @@ class BlackScholes:
 
     @property
     def put_price(self) -> float:
+        """Black-Scholes price of a European put."""
         return (
             self.strike * self.discount_factor * norm.cdf(-self.d2)
             - self.current_price * norm.cdf(-self.d1)
@@ -59,26 +64,35 @@ class BlackScholes:
 
     @property
     def call_delta(self) -> float:
+        """Change in call price per $1 move in the asset price."""
         return norm.cdf(self.d1)
 
     @property
     def put_delta(self) -> float:
+        """Change in put price per $1 move in the asset price (negative for puts)."""
         return norm.cdf(self.d1) - 1
 
     @property
     def gamma(self) -> float:
+        """Change in delta per $1 move in the asset price (same for calls and puts)."""
         return norm.pdf(self.d1) / (
             self.current_price * self.volatility * sqrt(self.time_to_maturity)
         )
 
     @property
     def vega(self) -> float:
-        """Change in option price per 1.00 (100 percentage points) change in volatility."""
+        """Change in option price per 1.00 (100 percentage points) change in volatility. 
+        
+        Same for calls and puts.
+        """
         return self.current_price * norm.pdf(self.d1) * sqrt(self.time_to_maturity)
 
     @property
     def call_theta(self) -> float:
-        """Change in call price per year that passes (negative: value decays)."""
+        """Change in call price per year that passes (negative: value decays). 
+        
+        Divide by 365 for the change per day.
+        """
         decay = (
             self.current_price * norm.pdf(self.d1) * self.volatility
             / (2 * sqrt(self.time_to_maturity))
@@ -88,7 +102,10 @@ class BlackScholes:
 
     @property
     def put_theta(self) -> float:
-        """Change in put price per year that passes."""
+        """Change in put price per year that passes. 
+        
+        Divide by 365 for the change per day.
+        """
         decay = (
             self.current_price * norm.pdf(self.d1) * self.volatility
             / (2 * sqrt(self.time_to_maturity))
@@ -126,3 +143,7 @@ if __name__ == "__main__":
     print("Put delta:", option.put_delta)
     print("Gamma:", option.gamma)
     print("Vega:", option.vega)
+    print("Call theta:", option.call_theta)
+    print("Put theta:", option.put_theta)
+    print("Call rho:", option.call_rho)
+    print("Put rho:", option.put_rho)
