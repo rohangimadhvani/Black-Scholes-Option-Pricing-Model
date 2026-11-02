@@ -1,5 +1,7 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import streamlit as st
 
 from blackscholes import BlackScholes
@@ -93,6 +95,24 @@ def compute_price_grids(time_to_maturity, strike, interest_rate, spot_range, vol
     return call_prices, put_prices
 
 
+def plot_heatmap(prices, spot_range, vol_range, title):
+    """Draw one heatmap of option prices (rows = volatility, columns = spot price)."""
+    fig, ax = plt.subplots(figsize=(10, 8))
+    sns.heatmap(
+        prices,
+        xticklabels=np.round(spot_range, 2),
+        yticklabels=np.round(vol_range, 2),
+        annot=True,
+        fmt=".2f",
+        cmap="viridis",
+        ax=ax,
+    )
+    ax.set_title(title)
+    ax.set_xlabel("Spot Price")
+    ax.set_ylabel("Volatility")
+    return fig
+
+
 # Main page
 st.title("Black-Scholes Pricing Model")
 
@@ -143,10 +163,32 @@ with col2:
     """, unsafe_allow_html=True)
 
 
-# Temporary check (we'll remove this in 9c)
+st.markdown("")
+st.title("Options Price - Interactive Heatmap")
+st.info(
+    "Explore how option prices fluctuate with varying spot prices and volatility "
+    "levels using the heatmap parameters in the sidebar, while the strike price "
+    "stays constant."
+)
+
+
+# Compute both grids once
 call_prices, put_prices = compute_price_grids(
     time_to_maturity, strike, interest_rate, spot_range, vol_range
 )
-st.write("Grid shape:", call_prices.shape)
-st.write("Call grid corners:", call_prices[0, 0], call_prices[0, 9], call_prices[9, 0], call_prices[9, 9])
-st.write("Put grid corners:", put_prices[0, 0], put_prices[0, 9], put_prices[9, 0], put_prices[9, 9])
+
+
+# Draw the two heatmaps side by side
+col1, col2 = st.columns([1, 1], gap="small")
+
+with col1:
+    st.subheader("Call Price Heatmap")
+    fig_call = plot_heatmap(call_prices, spot_range, vol_range, "CALL")
+    st.pyplot(fig_call)
+    plt.close(fig_call)
+
+with col2:
+    st.subheader("Put Price Heatmap")
+    fig_put = plot_heatmap(put_prices, spot_range, vol_range, "PUT")
+    st.pyplot(fig_put)
+    plt.close(fig_put)
