@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -60,6 +61,16 @@ with st.sidebar:
     volatility = st.number_input("Volatility (σ)", value=0.2)
     interest_rate = st.number_input("Risk-Free Interest Rate", value=0.05)
 
+    st.markdown("---")
+    st.subheader("Heatmap Parameters")
+    spot_min = st.number_input("Min Spot Price", min_value=0.01, value=current_price * 0.8, step=0.01)
+    spot_max = st.number_input("Max Spot Price", min_value=0.01, value=current_price * 1.2, step=0.01)
+    vol_min = st.slider("Min Volatility for Heatmap", min_value=0.01, max_value=1.0, value=volatility * 0.5, step=0.01)
+    vol_max = st.slider("Max Volatility for Heatmap", min_value=0.01, max_value=1.0, value=volatility * 1.5, step=0.01)
+
+    spot_range = np.linspace(spot_min, spot_max, 10)
+    vol_range = np.linspace(vol_min, vol_max, 10)
+
 
 # Main page
 st.title("Black-Scholes Pricing Model")
@@ -109,3 +120,7 @@ with col2:
             </div>
         </div>
     """, unsafe_allow_html=True)
+
+# Temporary check (we'll remove this in 9c)
+st.write("Spot range:", spot_range)
+st.write("Volatility range:", vol_range)
