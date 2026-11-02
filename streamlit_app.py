@@ -58,7 +58,14 @@ with st.sidebar:
     st.title("📊 Black-Scholes Model")
 
     st.write("`Created by:`")
-    st.markdown("Rohangi Madhvani (https://github.com/rohangimadhvani)")
+    linkedin_url = "https://www.linkedin.com/in/rohangimadhvani/"
+    st.markdown(
+        f'<a href="{linkedin_url}" target="_blank" style="text-decoration: none; color: inherit;">'
+        '<img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="25" height="25" '
+        'style="vertical-align: middle; margin-right: 10px;">'
+        'Rohangi Madhvani</a>',
+        unsafe_allow_html=True,
+    )
 
     current_price = st.number_input("Current Asset Price", value=100.0)
     strike = st.number_input("Strike Price", value=100.0)
@@ -195,3 +202,11 @@ with col2:
     fig_put = plot_heatmap(put_prices, spot_range, vol_range, "PUT")
     st.pyplot(fig_put)
     plt.close(fig_put)
+
+
+st.markdown("---")
+st.caption(
+    "Dashboard layout and project idea based on "
+    "[Prudhvi Reddy Muppala's Black-Scholes app](https://github.com/prudhvi-reddy-m/BlackScholes). "
+    "Rebuilt step by step as a learning project."
+)

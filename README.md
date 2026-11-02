@@ -34,3 +34,8 @@ streamlit run streamlit_app.py
 Black-Scholes assumes European options (exercisable only at expiry), constant
 volatility and interest rate, and no dividends. Real markets violate these
 assumptions, so treat the output as a model, not a market quote.
+
+## Acknowledgments
+
+Dashboard layout and project idea based on
+[prudhvi-reddy-m/BlackScholes](https://github.com/prudhvi-reddy-m/BlackScholes).
