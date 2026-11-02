@@ -1,13 +1,14 @@
+"""Streamlit dashboard for the Black-Scholes model: prices, Greeks and heatmaps."""
+
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import seaborn as sns
 import streamlit as st
 
 from blackscholes import BlackScholes
 
 
-# Page configuration
+# ---------- Page setup ----------
 st.set_page_config(
     page_title="Black-Scholes Option Pricing Model",
     page_icon="📊",
@@ -16,44 +17,7 @@ st.set_page_config(
 )
 
 
-# Custom CSS for the CALL and PUT value boxes
-st.markdown("""
-<style>
-.metric-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 8px;
-    margin: 0 auto;
-}
-
-.metric-call {
-    background-color: #90ee90;  /* light green */
-    color: black;
-    border-radius: 10px;
-}
-
-.metric-put {
-    background-color: #ffcccb;  /* light red */
-    color: black;
-    border-radius: 10px;
-}
-
-.metric-label {
-    font-size: 1rem;
-    margin-bottom: 4px;
-}
-
-.metric-value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin: 0;
-}
-</style>
-""", unsafe_allow_html=True)
-
-
-# Sidebar for user inputs
+# ---------- Sidebar: inputs ----------
 with st.sidebar:
     st.title("📊 Black-Scholes Model")
 
@@ -84,6 +48,7 @@ with st.sidebar:
     vol_range = np.linspace(vol_min, vol_max, 10)
 
 
+# ---------- Helpers ----------
 def compute_price_grids(time_to_maturity, strike, interest_rate, spot_range, vol_range):
     """Calculate call and put prices for every (volatility, spot price) pair."""
     call_prices = np.zeros((len(vol_range), len(spot_range)))
@@ -123,20 +88,13 @@ def plot_heatmap(prices, spot_range, vol_range, title):
     return fig
 
 
-# Main page
-st.title("Black-Scholes Pricing Model")
-
-
-# Table of the current inputs
-input_df = pd.DataFrame({
-    "Current Asset Price": [current_price],
-    "Strike Price": [strike],
-    "Time to Maturity (Years)": [time_to_maturity],
-    "Volatility (σ)": [volatility],
-    "Risk-Free Interest Rate": [interest_rate],
-})
-st.table(input_df)
-
+# ---------- Main page ----------
+st.title("Black-Scholes Option Pricing")
+st.caption(
+    f"Spot \\${current_price:,.2f}  ·  Strike \\${strike:,.2f}  ·  "
+    f"{time_to_maturity:g} yr to expiry  ·  Volatility {volatility:.0%}  ·  "
+    f"Rate {interest_rate:.1%}"
+)
 
 # Build the model from the sidebar values
 bs_model = BlackScholes(
@@ -147,62 +105,59 @@ bs_model = BlackScholes(
     interest_rate=interest_rate,
 )
 
-
-# Show CALL and PUT values side by side
-col1, col2 = st.columns([1, 1], gap="small")
-
-with col1:
-    st.markdown(f"""
-        <div class="metric-container metric-call">
-            <div>
-                <div class="metric-label">CALL Value</div>
-                <div class="metric-value">${bs_model.call_price:.2f}</div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-with col2:
-    st.markdown(f"""
-        <div class="metric-container metric-put">
-            <div>
-                <div class="metric-label">PUT Value</div>
-                <div class="metric-value">${bs_model.put_price:.2f}</div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+tab_pricing, tab_greeks, tab_heatmaps = st.tabs(["Pricing", "Greeks", "Heatmaps"])
 
 
-st.markdown("")
-st.title("Options Price - Interactive Heatmap")
-st.info(
-    "Explore how option prices fluctuate with varying spot prices and volatility "
-    "levels using the heatmap parameters in the sidebar, while the strike price "
-    "stays constant."
-)
+# ---------- Tab 1: Pricing ----------
+with tab_pricing:
+    call_col, put_col = st.columns(2)
+    call_col.metric(
+        "Call option",
+        f"${bs_model.call_price:.2f}",
+        help="The right to BUY the asset at the strike price on the expiry date.",
+        border=True,
+    )
+    put_col.metric(
+        "Put option",
+        f"${bs_model.put_price:.2f}",
+        help="The right to SELL the asset at the strike price on the expiry date.",
+        border=True,
+    )
 
 
-# Compute both grids once
-call_prices, put_prices = compute_price_grids(
-    time_to_maturity, strike, interest_rate, spot_range, vol_range
-)
+# ---------- Tab 2: Greeks (coming in the next step) ----------
+with tab_greeks:
+    st.info("The Greeks are coming in the next step.")
 
 
-# Draw the two heatmaps side by side
-col1, col2 = st.columns([1, 1], gap="small")
+# ---------- Tab 3: Heatmaps ----------
+with tab_heatmaps:
+    st.write(
+        "Each cell shows the option price for one combination of spot price "
+        "(horizontal) and volatility (vertical), with the strike held fixed. "
+        "Change the ranges in the sidebar to zoom in on a region."
+    )
 
-with col1:
-    st.subheader("Call Price Heatmap")
-    fig_call = plot_heatmap(call_prices, spot_range, vol_range, "CALL")
-    st.pyplot(fig_call)
-    plt.close(fig_call)
+    call_prices, put_prices = compute_price_grids(
+        time_to_maturity, strike, interest_rate, spot_range, vol_range
+    )
 
-with col2:
-    st.subheader("Put Price Heatmap")
-    fig_put = plot_heatmap(put_prices, spot_range, vol_range, "PUT")
-    st.pyplot(fig_put)
-    plt.close(fig_put)
+    left_col, right_col = st.columns(2)
+
+    with left_col:
+        st.subheader("Call prices")
+        fig_call = plot_heatmap(call_prices, spot_range, vol_range, "CALL")
+        st.pyplot(fig_call)
+        plt.close(fig_call)
+
+    with right_col:
+        st.subheader("Put prices")
+        fig_put = plot_heatmap(put_prices, spot_range, vol_range, "PUT")
+        st.pyplot(fig_put)
+        plt.close(fig_put)
 
 
+# ---------- Footer ----------
 st.markdown("---")
 st.caption(
     "Dashboard layout and project idea based on "
