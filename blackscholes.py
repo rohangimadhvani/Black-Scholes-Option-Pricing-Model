@@ -96,6 +96,20 @@ class BlackScholes:
         carry = self.interest_rate * self.strike * self.discount_factor * norm.cdf(-self.d2)
         return -decay + carry
 
+    @property
+    def call_rho(self) -> float:
+        """Change in call price per 1.00 (100 percentage points) change in the interest rate."""
+        return (
+            self.strike * self.time_to_maturity * self.discount_factor * norm.cdf(self.d2)
+        )
+
+    @property
+    def put_rho(self) -> float:
+        """Change in put price per 1.00 (100 percentage points) change in the interest rate."""
+        return (
+            -self.strike * self.time_to_maturity * self.discount_factor * norm.cdf(-self.d2)
+        )
+
 
 if __name__ == "__main__":
     option = BlackScholes(
