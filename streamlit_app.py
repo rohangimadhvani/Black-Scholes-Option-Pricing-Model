@@ -72,6 +72,27 @@ with st.sidebar:
     vol_range = np.linspace(vol_min, vol_max, 10)
 
 
+def compute_price_grids(time_to_maturity, strike, interest_rate, spot_range, vol_range):
+    """Calculate call and put prices for every (volatility, spot price) pair."""
+    call_prices = np.zeros((len(vol_range), len(spot_range)))
+    put_prices = np.zeros((len(vol_range), len(spot_range)))
+
+    for i, vol in enumerate(vol_range):
+        for j, spot in enumerate(spot_range):
+            option = BlackScholes(
+                time_to_maturity=time_to_maturity,
+                strike=strike,
+                current_price=spot,
+                volatility=vol,
+                interest_rate=interest_rate,
+            )
+            option.run()
+            call_prices[i, j] = option.call_price
+            put_prices[i, j] = option.put_price
+
+    return call_prices, put_prices
+
+
 # Main page
 st.title("Black-Scholes Pricing Model")
 
@@ -121,6 +142,11 @@ with col2:
         </div>
     """, unsafe_allow_html=True)
 
+
 # Temporary check (we'll remove this in 9c)
-st.write("Spot range:", spot_range)
-st.write("Volatility range:", vol_range)
+call_prices, put_prices = compute_price_grids(
+    time_to_maturity, strike, interest_rate, spot_range, vol_range
+)
+st.write("Grid shape:", call_prices.shape)
+st.write("Call grid corners:", call_prices[0, 0], call_prices[0, 9], call_prices[9, 0], call_prices[9, 9])
+st.write("Put grid corners:", put_prices[0, 0], put_prices[0, 9], put_prices[9, 0], put_prices[9, 9])
