@@ -138,7 +138,7 @@ input_df = pd.DataFrame({
 st.table(input_df)
 
 
-# Build the model from the sidebar values and run the calculation
+# Build the model from the sidebar values
 bs_model = BlackScholes(
     time_to_maturity=time_to_maturity,
     strike=strike,
