@@ -1,7 +1,10 @@
-from numpy import exp, sqrt, log
+from numpy import exp, log, sqrt
 from scipy.stats import norm
 
+
 class BlackScholes:
+    """Black-Scholes pricing for a European option on an asset with no dividends."""
+
     def __init__(
         self,
         time_to_maturity: float,
@@ -10,48 +13,64 @@ class BlackScholes:
         volatility: float,
         interest_rate: float,
     ):
-        self.time_to_maturity = time_to_maturity
-        self.strike = strike
-        self.current_price = current_price
-        self.volatility = volatility
-        self.interest_rate = interest_rate
+        self.time_to_maturity = time_to_maturity  # T, in years
+        self.strike = strike                      # K
+        self.current_price = current_price        # S
+        self.volatility = volatility              # sigma, yearly (0.2 = 20%)
+        self.interest_rate = interest_rate        # r, yearly (0.05 = 5%)
 
+    # ---- Building blocks ----
 
-    def run(self):
-        time_to_maturity = self.time_to_maturity
-        strike = self.strike
-        current_price = self.current_price
-        volatility = self.volatility
-        interest_rate = self.interest_rate
+    @property
+    def d1(self) -> float:
+        """Standardized distance between the current price and the strike."""
+        return (
+            log(self.current_price / self.strike)
+            + (self.interest_rate + 0.5 * self.volatility ** 2) * self.time_to_maturity
+        ) / (self.volatility * sqrt(self.time_to_maturity))
 
-        d1 = (
-            log(current_price / strike) +
-            (interest_rate + 0.5 * volatility ** 2) * time_to_maturity
-        ) / (
-            volatility * sqrt(time_to_maturity)
+    @property
+    def d2(self) -> float:
+        """d1 shifted down by one total-volatility step."""
+        return self.d1 - self.volatility * sqrt(self.time_to_maturity)
+
+    @property
+    def discount_factor(self) -> float:
+        """Today's value of $1 received at expiry: e^(-rT)."""
+        return exp(-self.interest_rate * self.time_to_maturity)
+
+    # ---- Prices ----
+
+    @property
+    def call_price(self) -> float:
+        return (
+            self.current_price * norm.cdf(self.d1)
+            - self.strike * self.discount_factor * norm.cdf(self.d2)
         )
-        d2 = d1 - volatility * sqrt(time_to_maturity)
 
-        call_price = current_price * norm.cdf(d1) - (
-            strike * exp(-(interest_rate * time_to_maturity)) * norm.cdf(d2)
+    @property
+    def put_price(self) -> float:
+        return (
+            self.strike * self.discount_factor * norm.cdf(-self.d2)
+            - self.current_price * norm.cdf(-self.d1)
         )
-        put_price = (
-            strike * exp(-(interest_rate * time_to_maturity)) * norm.cdf(-d2)
-        ) - current_price * norm.cdf(-d1)
 
-        self.call_price = call_price
-        self.put_price = put_price
+    # ---- Greeks ----
 
-        # GREEKS
-        # Delta: how much the option price changes per $1 move in the asset
-        self.call_delta = norm.cdf(d1)
-        self.put_delta = norm.cdf(d1) - 1
+    @property
+    def call_delta(self) -> float:
+        return norm.cdf(self.d1)
 
-        # Gamma: how much delta itself changes per $1 move in the asset
-        self.call_gamma = norm.pdf(d1) / (
-            current_price * volatility * sqrt(time_to_maturity)
+    @property
+    def put_delta(self) -> float:
+        return norm.cdf(self.d1) - 1
+
+    @property
+    def gamma(self) -> float:
+        return norm.pdf(self.d1) / (
+            self.current_price * self.volatility * sqrt(self.time_to_maturity)
         )
-        self.put_gamma = self.call_gamma
+
 
 
 if __name__ == "__main__":
@@ -63,9 +82,8 @@ if __name__ == "__main__":
         interest_rate=0.05,
     )
 
-    option.run()
     print("Call price:", option.call_price)
     print("Put price:", option.put_price)
     print("Call delta:", option.call_delta)
     print("Put delta:", option.put_delta)
-    print("Gamma:", option.call_gamma)
+    print("Gamma:", option.gamma)

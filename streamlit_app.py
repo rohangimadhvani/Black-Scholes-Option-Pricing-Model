@@ -98,7 +98,7 @@ def compute_price_grids(time_to_maturity, strike, interest_rate, spot_range, vol
                 volatility=vol,
                 interest_rate=interest_rate,
             )
-            option.run()
+
             call_prices[i, j] = option.call_price
             put_prices[i, j] = option.put_price
 
@@ -146,7 +146,6 @@ bs_model = BlackScholes(
     volatility=volatility,
     interest_rate=interest_rate,
 )
-bs_model.run()
 
 
 # Show CALL and PUT values side by side
