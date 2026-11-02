@@ -50,5 +50,9 @@ if __name__ == "__main__":
     check("gamma (put)", option.gamma, curvature("put_price", "current_price"))
     check("vega (call)", option.vega, slope("call_price", "volatility"))
     check("vega (put)", option.vega, slope("put_price", "volatility"))
-
+    # Theta is the change in price as time PASSES, i.e. as time_to_maturity shrinks,
+    # so it is minus the slope with respect to time_to_maturity.
+    check("theta (call)", option.call_theta, -slope("call_price", "time_to_maturity"))
+    check("theta (put)", option.put_theta, -slope("put_price", "time_to_maturity"))
+    
     print("All checks passed.")

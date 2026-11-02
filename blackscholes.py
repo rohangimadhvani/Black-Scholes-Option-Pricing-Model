@@ -76,6 +76,26 @@ class BlackScholes:
         """Change in option price per 1.00 (100 percentage points) change in volatility."""
         return self.current_price * norm.pdf(self.d1) * sqrt(self.time_to_maturity)
 
+    @property
+    def call_theta(self) -> float:
+        """Change in call price per year that passes (negative: value decays)."""
+        decay = (
+            self.current_price * norm.pdf(self.d1) * self.volatility
+            / (2 * sqrt(self.time_to_maturity))
+        )
+        carry = self.interest_rate * self.strike * self.discount_factor * norm.cdf(self.d2)
+        return -decay - carry
+
+    @property
+    def put_theta(self) -> float:
+        """Change in put price per year that passes."""
+        decay = (
+            self.current_price * norm.pdf(self.d1) * self.volatility
+            / (2 * sqrt(self.time_to_maturity))
+        )
+        carry = self.interest_rate * self.strike * self.discount_factor * norm.cdf(-self.d2)
+        return -decay + carry
+
 
 if __name__ == "__main__":
     option = BlackScholes(
