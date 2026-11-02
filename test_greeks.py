@@ -56,5 +56,5 @@ if __name__ == "__main__":
     check("theta (put)", option.put_theta, -slope("put_price", "time_to_maturity"))
     check("rho (call)", option.call_rho, slope("call_price", "interest_rate"))
     check("rho (put)", option.put_rho, slope("put_price", "interest_rate"))
-    
+
     print("All checks passed.")
