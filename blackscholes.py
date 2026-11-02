@@ -71,6 +71,10 @@ class BlackScholes:
             self.current_price * self.volatility * sqrt(self.time_to_maturity)
         )
 
+    @property
+    def vega(self) -> float:
+        """Change in option price per 1.00 (100 percentage points) change in volatility."""
+        return self.current_price * norm.pdf(self.d1) * sqrt(self.time_to_maturity)
 
 
 if __name__ == "__main__":
@@ -87,3 +91,4 @@ if __name__ == "__main__":
     print("Call delta:", option.call_delta)
     print("Put delta:", option.put_delta)
     print("Gamma:", option.gamma)
+    print("Vega:", option.vega)
