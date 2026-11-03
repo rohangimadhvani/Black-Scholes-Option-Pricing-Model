@@ -47,9 +47,9 @@ def apply_preset(values):
 # ---------- Helpers ----------
 # Each option is "in", "at" or "out" of the money. One palette is used everywhere.
 MONEYNESS_STYLE = {
-    "in": ("In the money", "green"),
-    "at": ("At the money", "blue"),
-    "out": ("Out of the money", "orange"),
+    "in": ("In the money", "#3DD56D"),      # green
+    "at": ("At the money", "#4C9AFF"),      # blue
+    "out": ("Out of the money", "#FFA421"),  # orange
 }
 
 
@@ -62,13 +62,20 @@ def moneyness(option_type, spot, strike):
 
 
 def option_card(container, title, price, status, help_text):
-    """Show one option as a bordered card whose color reflects its moneyness."""
+    """Show one option as a centered card whose color reflects its moneyness."""
     label, color = MONEYNESS_STYLE[status]
-    with container.container(border=True):
-        st.markdown(f"**{title}**", help=help_text)
-        st.markdown(f"## :{color}[\\${price:,.2f}]")
-        st.badge(label, color=color)
-
+    container.markdown(
+        f'<div style="border: 1px solid {color}66; border-radius: 12px; '
+        f'padding: 14px 8px; text-align: center;">'
+        f'<div style="font-size: 0.95rem; opacity: 0.8;" title="{help_text}">{title} ⓘ</div>'
+        f'<div style="font-size: 2.4rem; font-weight: 700; line-height: 1.25; '
+        f'color: {color};">&#36;{price:,.2f}</div>'
+        f'<span style="display: inline-block; margin-top: 4px; padding: 2px 12px; '
+        f'border-radius: 6px; background-color: {color}26; color: {color}; '
+        f'font-size: 0.85rem; font-weight: 600;">{label}</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
 
 def compute_price_grids(time_to_maturity, strike, interest_rate, spot_range, vol_range):
     """Calculate call and put prices for every (volatility, spot price) pair."""
@@ -141,7 +148,8 @@ bs_model = BlackScholes(
 years = f"{time_to_maturity:g} year" + ("" if time_to_maturity == 1 else "s")
 st.write(
     f"Options expiring in {years}, with a \\${strike:,.2f} strike, "
-    f"on an asset trading at \\${current_price:,.2f}."
+    f"on an asset trading at \\${current_price:,.2f} "
+    f"(assuming {volatility * 100:g}% volatility and a {interest_rate * 100:g}% risk-free rate)."
 )
 
 
@@ -163,7 +171,7 @@ option_card(
 
 
 # ---------- Tabs ----------
-tab_greeks, tab_heatmaps = st.tabs(["📈 Greeks", "🔥 Heatmaps"])
+tab_heatmaps, tab_greeks = st.tabs(["Heatmaps", "Greeks"])
 
 with tab_greeks:
     st.info("The Greeks are coming in the next step.")
