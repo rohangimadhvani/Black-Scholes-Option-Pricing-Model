@@ -61,16 +61,33 @@ def moneyness(option_type, spot, strike):
     return "in" if in_the_money else "out"
 
 
-def option_card(container, title, price, status, help_text):
+# Pure-CSS hover tooltip (works without any Streamlit widget): the explanation
+# sits in a hidden <span> that becomes visible while the mouse is over the icon.
+TOOLTIP_CSS = (
+    "<style>"
+    ".opt-tip { position: relative; display: inline-block; cursor: help; margin-left: 4px; }"
+    ".opt-tip .opt-tip-text { visibility: hidden; opacity: 0; position: absolute; z-index: 1000; "
+    "top: 135%; left: 50%; transform: translateX(-50%); width: 230px; padding: 8px 10px; "
+    "border-radius: 6px; background: #31333F; color: #FAFAFA; border: 1px solid #4A4D5A; "
+    "font-size: 0.8rem; font-weight: 400; line-height: 1.35; text-align: left; "
+    "transition: opacity 0.15s; }"
+    ".opt-tip:hover .opt-tip-text { visibility: visible; opacity: 1; }"
+    "</style>"
+)
+
+
+def option_card(container, title, help_text, price, status):
     """Show one option as a centered card whose color reflects its moneyness."""
     label, color = MONEYNESS_STYLE[status]
     container.markdown(
-        f'<div style="border: 1px solid {color}66; border-radius: 12px; '
+        TOOLTIP_CSS
+        + f'<div style="border: 1px solid {color}66; border-radius: 12px; '
         f'padding: 14px 8px; text-align: center;">'
-        f'<div style="font-size: 0.95rem; opacity: 0.8;" title="{help_text}">{title} ⓘ</div>'
+        f'<div style="font-size: 0.95rem;"><span style="opacity: 0.8;">{title}</span>'
+        f'<span class="opt-tip">ⓘ<span class="opt-tip-text">{help_text}</span></span></div>'
         f'<div style="font-size: 2.4rem; font-weight: 700; line-height: 1.25; '
         f'color: {color};">&#36;{price:,.2f}</div>'
-        f'<span style="display: inline-block; margin-top: 4px; padding: 2px 12px; '
+        f'<span style="display: inline-block; margin-top: 4px; padding: 3px 12px; '
         f'border-radius: 6px; background-color: {color}26; color: {color}; '
         f'font-size: 0.85rem; font-weight: 600;">{label}</span>'
         f'</div>',
@@ -157,16 +174,16 @@ call_col, put_col = st.columns(2)
 option_card(
     call_col,
     "Call option",
+    "The right to BUY the asset at the strike price on the expiry date.",
     bs_model.call_price,
     moneyness("call", current_price, strike),
-    "The right to BUY the asset at the strike price on the expiry date.",
 )
 option_card(
     put_col,
     "Put option",
+    "The right to SELL the asset at the strike price on the expiry date.",
     bs_model.put_price,
     moneyness("put", current_price, strike),
-    "The right to SELL the asset at the strike price on the expiry date.",
 )
 
 
