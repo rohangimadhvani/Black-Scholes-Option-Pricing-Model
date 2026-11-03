@@ -28,7 +28,8 @@ DEFAULTS = {
 
 PRESETS = {
     "At the money": {**DEFAULTS},
-    "In the money call": {**DEFAULTS, "current_price": 120.0},
+    "Call in the money": {**DEFAULTS, "current_price": 120.0},
+    "Put in the money": {**DEFAULTS, "current_price": 80.0},
     "Short-dated": {**DEFAULTS, "time_to_maturity": 0.1},
     "High volatility": {**DEFAULTS, "volatility": 0.60},
 }
@@ -44,13 +45,29 @@ def apply_preset(values):
 
 
 # ---------- Helpers ----------
-def describe_moneyness(spot, strike):
-    """Return a (label, color) pair saying where the spot price sits relative to the strike."""
+# Each option is "in", "at" or "out" of the money. One palette is used everywhere.
+MONEYNESS_STYLE = {
+    "in": ("In the money", "green"),
+    "at": ("At the money", "blue"),
+    "out": ("Out of the money", "orange"),
+}
+
+
+def moneyness(option_type, spot, strike):
+    """Return "in", "at" or "out" for a call or put, given the spot and strike prices."""
     if abs(spot / strike - 1) < 0.01:
-        return "At the money", "blue"
-    if spot > strike:
-        return "Call in the money · Put out of the money", "green"
-    return "Put in the money · Call out of the money", "gray"
+        return "at"
+    in_the_money = spot > strike if option_type == "call" else spot < strike
+    return "in" if in_the_money else "out"
+
+
+def option_card(container, title, price, status, help_text):
+    """Show one option as a bordered card whose color reflects its moneyness."""
+    label, color = MONEYNESS_STYLE[status]
+    with container.container(border=True):
+        st.markdown(f"**{title}**", help=help_text)
+        st.markdown(f"## :{color}[\\${price:,.2f}]")
+        st.badge(label, color=color)
 
 
 def compute_price_grids(time_to_maturity, strike, interest_rate, spot_range, vol_range):
@@ -109,7 +126,7 @@ with st.expander("Option setup", expanded=True):
     st.caption("Quick scenarios")
     preset_cols = st.columns(len(PRESETS))
     for col, (name, values) in zip(preset_cols, PRESETS.items()):
-        col.button(name, on_click=apply_preset, args=(values,))
+        col.button(name, on_click=apply_preset, args=(values,), width="stretch")
 
 
 # ---------- Results strip (visible above every tab) ----------
@@ -121,25 +138,27 @@ bs_model = BlackScholes(
     interest_rate=interest_rate,
 )
 
+years = f"{time_to_maturity:g} year" + ("" if time_to_maturity == 1 else "s")
 st.write(
-    f"A {time_to_maturity:g}-year call and put struck at \\${strike:,.2f}, "
+    f"Options expiring in {years}, with a \\${strike:,.2f} strike, "
     f"on an asset trading at \\${current_price:,.2f}."
 )
-label, color = describe_moneyness(current_price, strike)
-st.badge(label, color=color)
+
 
 call_col, put_col = st.columns(2)
-call_col.metric(
+option_card(
+    call_col,
     "Call option",
-    f"${bs_model.call_price:.2f}",
-    help="The right to BUY the asset at the strike price on the expiry date.",
-    border=True,
+    bs_model.call_price,
+    moneyness("call", current_price, strike),
+    "The right to BUY the asset at the strike price on the expiry date.",
 )
-put_col.metric(
+option_card(
+    put_col,
     "Put option",
-    f"${bs_model.put_price:.2f}",
-    help="The right to SELL the asset at the strike price on the expiry date.",
-    border=True,
+    bs_model.put_price,
+    moneyness("put", current_price, strike),
+    "The right to SELL the asset at the strike price on the expiry date.",
 )
 
 
@@ -152,7 +171,7 @@ with tab_greeks:
 with tab_heatmaps:
     st.write(
         "Each cell shows the option price for one combination of spot price "
-        "(horizontal) and volatility (vertical), with the strike held fixed."
+        "(x-axis) and volatility (y-axis), with the strike held fixed."
     )
 
     range_cols = st.columns(4)
@@ -204,7 +223,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.caption(
-    "Layout concept inspired by "
-    "[Prudhvi Reddy Muppala's Black-Scholes app](https://github.com/prudhvi-reddy-m/BlackScholes). "
-    "Built step by step as a learning project."
+    "Inspired by "
+    "[Prudhvi Reddy Muppala's Black-Scholes app](https://github.com/prudhvi-reddy-m/BlackScholes)."
 )
