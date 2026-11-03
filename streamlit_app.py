@@ -132,6 +132,83 @@ def plot_heatmap(prices, spot_range, vol_range, title):
     ax.set_ylabel("Volatility")
     return fig
 
+# Colors for the payoff charts (they match the dark theme and the moneyness palette).
+PAGE_BG = "#0E1117"
+TEXT = "#FAFAFA"
+MUTED = "#9AA0AE"
+GREEN = "#3DD56D"
+ORANGE = "#FFA421"
+BLUE = "#4C9AFF"
+
+
+def plot_payoff(option_type, bs_model, show_profit):
+    """Draw the value (or profit/loss) of one option at expiry and today, versus the asset price."""
+    strike = bs_model.strike
+    spot = bs_model.current_price
+    prices = np.linspace(min(spot, strike) * 0.5, max(spot, strike) * 1.5, 300)
+
+    # The class works on whole arrays of prices, so no loop is needed.
+    curve = BlackScholes(
+        time_to_maturity=bs_model.time_to_maturity,
+        strike=strike,
+        current_price=prices,
+        volatility=bs_model.volatility,
+        interest_rate=bs_model.interest_rate,
+    )
+
+    if option_type == "call":
+        at_expiry = np.maximum(prices - strike, 0)
+        today = curve.call_price
+        premium = bs_model.call_price
+        breakeven = strike + premium
+    else:
+        at_expiry = np.maximum(strike - prices, 0)
+        today = curve.put_price
+        premium = bs_model.put_price
+        breakeven = strike - premium
+
+    if show_profit:
+        at_expiry = at_expiry - premium
+        today = today - premium
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    fig.patch.set_facecolor(PAGE_BG)
+    ax.set_facecolor(PAGE_BG)
+
+    if show_profit:
+        ax.fill_between(prices, at_expiry, 0, where=at_expiry >= 0, color=GREEN, alpha=0.18)
+        ax.fill_between(prices, at_expiry, 0, where=at_expiry < 0, color=ORANGE, alpha=0.18)
+        ax.axhline(0, color=MUTED, linewidth=0.8)
+
+    ax.plot(prices, at_expiry, color=BLUE, linewidth=2.5, label="At expiry")
+    ax.plot(prices, today, color=TEXT, linewidth=1.8, linestyle="--", label="Today (includes time value)")
+
+    ax.axvline(spot, color=MUTED, linestyle=":", linewidth=1)
+    ax.axvline(strike, color=MUTED, linestyle=":", linewidth=1, alpha=0.5)
+    ax.text(spot, 1.02, "Current price", transform=ax.get_xaxis_transform(),
+            ha="center", va="bottom", color=MUTED, fontsize=9)
+    ax.text(strike, 0.02, "Strike", transform=ax.get_xaxis_transform(),
+            ha="center", va="bottom", color=MUTED, fontsize=9,
+            bbox=dict(facecolor=PAGE_BG, edgecolor="none", pad=1.5))
+
+    if show_profit and prices[0] <= breakeven <= prices[-1]:
+        ax.plot(breakeven, 0, "o", color=TEXT, markersize=7)
+        ax.annotate(f"Breakeven ${breakeven:,.2f}", (breakeven, 0), textcoords="offset points",
+                    xytext=(0, 14), ha="center", color=TEXT, fontsize=9,
+                    bbox=dict(facecolor=PAGE_BG, edgecolor="none", pad=1.5))
+
+    ax.set_title("Call option" if option_type == "call" else "Put option", color=TEXT, pad=22)
+    ax.set_xlabel("Asset price ($)", color=TEXT)
+    ax.set_ylabel("Profit / loss per share ($)" if show_profit else "Option value per share ($)", color=TEXT)
+    ax.tick_params(colors=TEXT)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    for side in ("left", "bottom"):
+        ax.spines[side].set_color(MUTED)
+    ax.grid(True, color=MUTED, alpha=0.15)
+    ax.legend(facecolor=PAGE_BG, edgecolor=MUTED, labelcolor=TEXT, fontsize=9)
+    return fig
+
 
 # ---------- Header ----------
 st.title("Options Lab")
@@ -188,10 +265,26 @@ option_card(
 
 
 # ---------- Tabs ----------
-tab_heatmaps, tab_greeks = st.tabs(["Heatmaps", "Greeks"])
+tab_payoff, tab_heatmaps, tab_greeks = st.tabs(["Payoff", "Heatmaps", "Greeks"])
 
-with tab_greeks:
-    st.info("The Greeks are coming in the next step.")
+with tab_payoff:
+    show_profit = st.toggle("Show profit / loss (subtracts the price you paid today)")
+    
+    left_col, right_col = st.columns(2)
+    with left_col:
+        fig_call_payoff = plot_payoff("call", bs_model, show_profit)
+        st.pyplot(fig_call_payoff)
+        plt.close(fig_call_payoff)
+    with right_col:
+        fig_put_payoff = plot_payoff("put", bs_model, show_profit)
+        st.pyplot(fig_put_payoff)
+        plt.close(fig_put_payoff)
+
+    st.caption(
+        "The solid line is what the option is worth on expiry day. The dashed line is what "
+        "the model says it is worth today, and the gap between them is time value. "
+        "Profit / loss assumes you buy at today's price shown above and hold to expiry."
+    )
 
 with tab_heatmaps:
     st.write(
@@ -235,6 +328,9 @@ with tab_heatmaps:
             fig_put = plot_heatmap(put_prices, spot_range, vol_range, "PUT")
             st.pyplot(fig_put)
             plt.close(fig_put)
+
+with tab_greeks:
+    st.info("The Greeks are coming in the next step.")
 
 
 # ---------- Footer ----------
