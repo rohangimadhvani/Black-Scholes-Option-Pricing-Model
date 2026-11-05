@@ -245,7 +245,8 @@ GREEK_NOTES = {
     "Delta": (
         "Delta runs from 0 to 1 for a call and from -1 to 0 for a put. Far from the strike "
         "it barely reacts, and deep in the money the option moves almost one-for-one with "
-        "the asset. The steep middle stretch is where gamma is large."
+        "the asset (in the opposite direction for a put). The steep middle stretch is where "
+        "gamma is large."
     ),
     "Gamma": (
         "Gamma is the slope of delta. It is a hump that fades to nearly zero far from the "
@@ -257,14 +258,16 @@ GREEK_NOTES = {
         "odds the most, and it fades for options far in or out of the money. "
         "Calls and puts share one vega."
     ),
-    "Theta": (
-        "Theta is time decay. For a call it is always negative, and it is most negative "
-        "around the strike. A deep in-the-money put can have positive theta, because the "
-        "strike it would receive is worth more as expiry gets closer."
+        "Theta": (
+        "Theta is time decay. With positive interest rates, a call's theta is always negative, "
+        "and it is most negative around the strike. With positive rates, a deep in-the-money "
+        "put can have positive theta, because the strike it would receive is worth more as "
+        "expiry gets closer. With zero or negative rates, these patterns can change."
     ),
     "Rho": (
         "Calls have positive rho and puts negative rho. The effect grows as a call gets deeper "
-        "in the money, and it is bigger with more time to expiry, since more interest accrues."
+        "in the money, and it tends to be bigger with more time to expiry, since more "
+        "interest accrues."
     ),
 }
 
@@ -424,7 +427,8 @@ with tab_payoff:
         "the model says it is worth today, and the gap between them is time value. "
         "(A deep in-the-money put can dip slightly below its expiry value, because the "
         "strike you would receive is paid later and is worth less today.) "
-        "Profit / loss assumes you buy at today's price shown above and hold to expiry."
+        "Profit / loss is per share and assumes you buy the option today at the price shown "
+        "in the card above and hold it to expiry, ignoring fees."
     )
 
 with tab_heatmaps:
@@ -435,7 +439,7 @@ with tab_heatmaps:
 
     range_cols = st.columns(4)
     spot_min = range_cols[0].number_input(
-        "Min spot price", min_value=0.01, value=current_price * 0.8, step=0.01
+        "Min spot price", min_value=0.01, value=max(current_price * 0.8, 0.01), step=0.01
     )
     spot_max = range_cols[1].number_input(
         "Max spot price", min_value=0.01, value=current_price * 1.2, step=0.01
@@ -478,7 +482,7 @@ with tab_greeks:
     st.table(greeks_table(bs_model))
     st.caption(
         "All values are per share, and one standard equity option contract usually covers "
-        "100 shares. Vega and rho are per 1 percentage point; theta is per day."
+        "100 shares. Vega and rho are per 1 percentage point; theta is per calendar day."
     )
 
     st.subheader("Reading your numbers")

@@ -89,9 +89,9 @@ class BlackScholes:
 
     @property
     def call_theta(self) -> float:
-        """Change in call price per year that passes (negative: value decays). 
-        
-        Divide by 365 for the change per day.
+        """Change in call price per year that passes (usually negative: value decays).
+
+        Divide by 365 for the change per calendar day.
         """
         decay = (
             self.current_price * norm.pdf(self.d1) * self.volatility
