@@ -115,22 +115,10 @@ def compute_price_grids(time_to_maturity, strike, interest_rate, spot_range, vol
     return call_prices, put_prices
 
 
-def plot_heatmap(prices, spot_range, vol_range, title):
-    """Draw one heatmap of option prices (rows = volatility, columns = spot price)."""
-    fig, ax = plt.subplots(figsize=(10, 8))
-    sns.heatmap(
-        prices,
-        xticklabels=np.round(spot_range, 2),
-        yticklabels=np.round(vol_range, 2),
-        annot=True,
-        fmt=".2f",
-        cmap="viridis",
-        ax=ax,
-    )
-    ax.set_title(title)
-    ax.set_xlabel("Spot Price")
-    ax.set_ylabel("Volatility")
-    return fig
+# Shared chart styling, so every chart on every tab uses the same size and fonts.
+FIG_SIZE = (8, 5.5)
+FONT_LABEL = 10  # axis labels
+FONT_TICK = 9    # tick numbers, legends and small notes
 
 # Colors for the payoff charts (they match the dark theme and the moneyness palette).
 PAGE_BG = "#0E1117"
@@ -139,6 +127,26 @@ MUTED = "#9AA0AE"
 GREEN = "#3DD56D"
 ORANGE = "#FFA421"
 BLUE = "#4C9AFF"
+
+
+def plot_heatmap(prices, spot_range, vol_range):
+    """Draw one heatmap of option prices (rows = volatility, columns = spot price)."""
+    fig, ax = plt.subplots(figsize=FIG_SIZE)
+    sns.heatmap(
+        prices,
+        xticklabels=np.round(spot_range, 2),
+        yticklabels=np.round(vol_range, 2),
+        annot=True,
+        fmt=".2f",
+        cmap="viridis",
+        annot_kws={"size": FONT_TICK - 1},
+        ax=ax,
+    )
+    ax.set_xlabel("Spot price ($)", fontsize=FONT_LABEL)
+    ax.set_ylabel("Volatility", fontsize=FONT_LABEL)
+    ax.tick_params(labelsize=FONT_TICK)
+    ax.collections[0].colorbar.ax.tick_params(labelsize=FONT_TICK)
+    return fig
 
 
 def plot_payoff(option_type, bs_model, show_profit):
@@ -167,18 +175,27 @@ def plot_payoff(option_type, bs_model, show_profit):
         premium = bs_model.put_price
         breakeven = strike - premium
 
+    # Fix the y-axis so it never moves when the profit / loss toggle changes.
+    # The lowest possible point is -premium (the most you can lose); the highest is
+    # the top of the "value" curves.
+    y_low = -premium
+    y_high = max(at_expiry.max(), today.max())
+    padding = 0.06 * (y_high - y_low)
+
     if show_profit:
         at_expiry = at_expiry - premium
         today = today - premium
 
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=FIG_SIZE)
     fig.patch.set_facecolor(PAGE_BG)
     ax.set_facecolor(PAGE_BG)
+    ax.set_ylim(y_low - padding, y_high + padding)
 
+    ax.axhline(0, color=MUTED, linewidth=0.8)
     if show_profit:
         ax.fill_between(prices, at_expiry, 0, where=at_expiry >= 0, color=GREEN, alpha=0.18)
         ax.fill_between(prices, at_expiry, 0, where=at_expiry < 0, color=ORANGE, alpha=0.18)
-        ax.axhline(0, color=MUTED, linewidth=0.8)
+
 
     ax.plot(prices, at_expiry, color=BLUE, linewidth=2.5, label="At expiry")
     ax.plot(prices, today, color=TEXT, linewidth=1.8, linestyle="--", label="Today (includes time value)")
@@ -186,27 +203,29 @@ def plot_payoff(option_type, bs_model, show_profit):
     ax.axvline(spot, color=MUTED, linestyle=":", linewidth=1)
     ax.axvline(strike, color=MUTED, linestyle=":", linewidth=1, alpha=0.5)
     ax.text(spot, 1.02, "Current price", transform=ax.get_xaxis_transform(),
-            ha="center", va="bottom", color=MUTED, fontsize=9)
+            ha="center", va="bottom", color=MUTED, fontsize=FONT_TICK)
     ax.text(strike, 0.02, "Strike", transform=ax.get_xaxis_transform(),
-            ha="center", va="bottom", color=MUTED, fontsize=9,
+            ha="center", va="bottom", color=MUTED, fontsize=FONT_TICK,
             bbox=dict(facecolor=PAGE_BG, edgecolor="none", pad=1.5))
 
     if show_profit and prices[0] <= breakeven <= prices[-1]:
         ax.plot(breakeven, 0, "o", color=TEXT, markersize=7)
         ax.annotate(f"Breakeven ${breakeven:,.2f}", (breakeven, 0), textcoords="offset points",
-                    xytext=(0, 14), ha="center", color=TEXT, fontsize=9,
+                    xytext=(0, 14), ha="center", color=TEXT, fontsize=FONT_TICK,
                     bbox=dict(facecolor=PAGE_BG, edgecolor="none", pad=1.5))
 
-    ax.set_title("Call option" if option_type == "call" else "Put option", color=TEXT, pad=22)
-    ax.set_xlabel("Asset price ($)", color=TEXT)
-    ax.set_ylabel("Profit / loss per share ($)" if show_profit else "Option value per share ($)", color=TEXT)
-    ax.tick_params(colors=TEXT)
+    ax.set_xlabel("Asset price ($)", color=TEXT, fontsize=FONT_LABEL)
+    ax.set_ylabel(
+        "Profit / loss per share ($)" if show_profit else "Option value per share ($)",
+        color=TEXT, fontsize=FONT_LABEL,
+    )
+    ax.tick_params(colors=TEXT, labelsize=FONT_TICK)
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
     for side in ("left", "bottom"):
         ax.spines[side].set_color(MUTED)
     ax.grid(True, color=MUTED, alpha=0.15)
-    ax.legend(facecolor=PAGE_BG, edgecolor=MUTED, labelcolor=TEXT, fontsize=9)
+    ax.legend(facecolor=PAGE_BG, edgecolor=MUTED, labelcolor=TEXT, fontsize=FONT_TICK)
     return fig
 
 
@@ -227,7 +246,14 @@ with st.expander("Option setup", expanded=True):
     st.caption("Quick scenarios")
     preset_cols = st.columns(len(PRESETS))
     for col, (name, values) in zip(preset_cols, PRESETS.items()):
-        col.button(name, on_click=apply_preset, args=(values,), width="stretch")
+        is_active = all(st.session_state[key] == value for key, value in values.items())
+        col.button(
+            name,
+            on_click=apply_preset,
+            args=(values,),
+            width="stretch",
+            type="primary" if is_active else "secondary",
+        )
 
 
 # ---------- Results strip (visible above every tab) ----------
@@ -269,13 +295,15 @@ tab_payoff, tab_heatmaps, tab_greeks = st.tabs(["Payoff", "Heatmaps", "Greeks"])
 
 with tab_payoff:
     show_profit = st.toggle("Show profit / loss (subtracts the price you paid today)")
-    
+
     left_col, right_col = st.columns(2)
     with left_col:
+        st.subheader("Call option")
         fig_call_payoff = plot_payoff("call", bs_model, show_profit)
         st.pyplot(fig_call_payoff)
         plt.close(fig_call_payoff)
     with right_col:
+        st.subheader("Put option")
         fig_put_payoff = plot_payoff("put", bs_model, show_profit)
         st.pyplot(fig_put_payoff)
         plt.close(fig_put_payoff)
@@ -283,6 +311,8 @@ with tab_payoff:
     st.caption(
         "The solid line is what the option is worth on expiry day. The dashed line is what "
         "the model says it is worth today, and the gap between them is time value. "
+        "(A deep in-the-money put can dip slightly below its expiry value, because the "
+        "strike you would receive is paid later and is worth less today.) "
         "Profit / loss assumes you buy at today's price shown above and hold to expiry."
     )
 
@@ -318,14 +348,14 @@ with tab_heatmaps:
         left_col, right_col = st.columns(2)
 
         with left_col:
-            st.subheader("Call prices")
-            fig_call = plot_heatmap(call_prices, spot_range, vol_range, "CALL")
+            st.subheader("Call option")
+            fig_call = plot_heatmap(call_prices, spot_range, vol_range)
             st.pyplot(fig_call)
             plt.close(fig_call)
 
         with right_col:
-            st.subheader("Put prices")
-            fig_put = plot_heatmap(put_prices, spot_range, vol_range, "PUT")
+            st.subheader("Put option")
+            fig_put = plot_heatmap(put_prices, spot_range, vol_range)
             st.pyplot(fig_put)
             plt.close(fig_put)
 
