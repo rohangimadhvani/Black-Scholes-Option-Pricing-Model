@@ -76,6 +76,24 @@ TOOLTIP_CSS = (
     "</style>"
 )
 
+def input_warnings(time_to_maturity, volatility, interest_rate):
+    """Return friendly warnings for inputs that are valid but probably not what was meant."""
+    warnings = []
+    if volatility > 1.5:
+        warnings.append(
+            "Volatility is above 150%. It is a yearly decimal, so enter 20% as 0.20, not 20."
+        )
+    if abs(interest_rate) > 0.25:
+        warnings.append(
+            "The risk-free rate is beyond 25%. It is a yearly decimal, so enter 5% as 0.05, not 5."
+        )
+    if time_to_maturity > 10:
+        warnings.append(
+            "Time to expiry is more than 10 years. It is measured in years, "
+            "so enter six months as 0.5."
+        )
+    return warnings
+
 
 def option_card(container, title, help_text, price, status):
     """Show one option as a centered card whose color reflects its moneyness."""
@@ -351,11 +369,24 @@ st.caption("Explore how Black-Scholes prices a European call and put.")
 # ---------- Option setup (inputs) ----------
 with st.expander("Option setup", expanded=True):
     input_cols = st.columns(5)
-    current_price = input_cols[0].number_input("Asset price", key="current_price", min_value=0.01)
-    strike = input_cols[1].number_input("Strike price", key="strike", min_value=0.01)
-    time_to_maturity = input_cols[2].number_input("Years to expiry", key="time_to_maturity", min_value=0.01)
-    volatility = input_cols[3].number_input("Volatility (σ)", key="volatility", min_value=0.01)
-    interest_rate = input_cols[4].number_input("Risk-free rate", key="interest_rate")
+    current_price = input_cols[0].number_input(
+        "Asset price", key="current_price", min_value=0.01, format="%g"
+    )
+    strike = input_cols[1].number_input(
+        "Strike price", key="strike", min_value=0.01, format="%g"
+    )
+    time_to_maturity = input_cols[2].number_input(
+        "Years to expiry", key="time_to_maturity", min_value=0.01, format="%g",
+        help="Measured in years: 0.5 is six months, 0.25 is three months.",
+    )
+    volatility = input_cols[3].number_input(
+        "Volatility (σ)", key="volatility", min_value=0.01, format="%g",
+        help="Yearly, as a decimal: 0.20 means 20%.",
+    )
+    interest_rate = input_cols[4].number_input(
+        "Risk-free rate", key="interest_rate", format="%g",
+        help="Yearly, as a decimal: 0.05 means 5%.",
+    )
 
     st.caption("Quick scenarios")
     preset_cols = st.columns(len(PRESETS))
@@ -369,6 +400,9 @@ with st.expander("Option setup", expanded=True):
             type="primary" if is_active else "secondary",
         )
 
+# ---------- Input warnings ----------
+for message in input_warnings(time_to_maturity, volatility, interest_rate):
+    st.warning(message)
 
 # ---------- Results strip (visible above every tab) ----------
 bs_model = BlackScholes(
@@ -439,16 +473,20 @@ with tab_heatmaps:
 
     range_cols = st.columns(4)
     spot_min = range_cols[0].number_input(
-        "Min spot price", min_value=0.01, value=max(current_price * 0.8, 0.01), step=0.01
+        "Min spot price", min_value=0.01, value=max(current_price * 0.8, 0.01),
+        step=0.01, format="%g",
     )
     spot_max = range_cols[1].number_input(
-        "Max spot price", min_value=0.01, value=current_price * 1.2, step=0.01
+        "Max spot price", min_value=0.01, value=current_price * 1.2,
+        step=0.01, format="%g",
     )
     vol_min = range_cols[2].number_input(
-        "Min volatility", min_value=0.01, value=max(volatility * 0.5, 0.01), step=0.01
+        "Min volatility", min_value=0.01, value=max(volatility * 0.5, 0.01),
+        step=0.01, format="%g",
     )
     vol_max = range_cols[3].number_input(
-        "Max volatility", min_value=0.01, value=max(volatility * 1.5, 0.02), step=0.01
+        "Max volatility", min_value=0.01, value=max(volatility * 1.5, 0.02),
+        step=0.01, format="%g",
     )
 
     if spot_min >= spot_max or vol_min >= vol_max:
