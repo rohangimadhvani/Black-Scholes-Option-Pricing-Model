@@ -229,6 +229,94 @@ def plot_payoff(option_type, bs_model, show_profit):
     ax.legend(facecolor=PAGE_BG, edgecolor=MUTED, labelcolor=TEXT, fontsize=FONT_TICK)
     return fig
 
+VIOLET = "#C792EA"
+
+# For each Greek: the call attribute, the put attribute (None if call and put are identical),
+# the display scale (vega and rho per 1 point, theta per day), and the y-axis label.
+GREEKS = {
+    "Delta": ("call_delta", "put_delta", 1, "Delta (price change per $1 move)"),
+    "Gamma": ("gamma", None, 1, "Gamma (change in delta per $1 move)"),
+    "Vega": ("vega", None, 1 / 100, "Vega (per 1 percentage point of volatility)"),
+    "Theta": ("call_theta", "put_theta", 1 / 365, "Theta (per day)"),
+    "Rho": ("call_rho", "put_rho", 1 / 100, "Rho (per 1 percentage point of rate)"),
+}
+
+GREEK_NOTES = {
+    "Delta": (
+        "Delta runs from 0 to 1 for a call and from -1 to 0 for a put. Far from the strike "
+        "it barely reacts, and deep in the money the option moves almost one-for-one with "
+        "the asset. The steep middle stretch is where gamma is large."
+    ),
+    "Gamma": (
+        "Gamma is the slope of delta. It is a hump that fades to nearly zero far from the "
+        "strike. It peaks around the strike (somewhat below it when a lot of time remains) "
+        "and gets taller and narrower as expiry approaches. Calls and puts share one gamma."
+    ),
+    "Vega": (
+        "Vega is largest for options close to the strike, where extra volatility changes the "
+        "odds the most, and it fades for options far in or out of the money. "
+        "Calls and puts share one vega."
+    ),
+    "Theta": (
+        "Theta is time decay. For a call it is always negative, and it is most negative "
+        "around the strike. A deep in-the-money put can have positive theta, because the "
+        "strike it would receive is worth more as expiry gets closer."
+    ),
+    "Rho": (
+        "Calls have positive rho and puts negative rho. The effect grows as a call gets deeper "
+        "in the money, and it is bigger with more time to expiry, since more interest accrues."
+    ),
+}
+
+
+def plot_greek(greek, bs_model):
+    """Plot one Greek for the call and put against the asset price."""
+    call_attr, put_attr, scale, ylabel = GREEKS[greek]
+    strike = bs_model.strike
+    spot = bs_model.current_price
+    prices = np.linspace(min(spot, strike) * 0.5, max(spot, strike) * 1.5, 300)
+
+    curve = BlackScholes(
+        time_to_maturity=bs_model.time_to_maturity,
+        strike=strike,
+        current_price=prices,
+        volatility=bs_model.volatility,
+        interest_rate=bs_model.interest_rate,
+    )
+
+    fig, ax = plt.subplots(figsize=FIG_SIZE)
+    fig.patch.set_facecolor(PAGE_BG)
+    ax.set_facecolor(PAGE_BG)
+    ax.axhline(0, color=MUTED, linewidth=0.8)
+
+    lines = [(call_attr, BLUE, "Call and put (identical)" if put_attr is None else "Call")]
+    if put_attr is not None:
+        lines.append((put_attr, VIOLET, "Put"))
+
+    for attr, color, label in lines:
+        ax.plot(prices, getattr(curve, attr) * scale, color=color, linewidth=2.2, label=label)
+        ax.plot(spot, getattr(bs_model, attr) * scale, "o", color=color, markersize=8,
+                markeredgecolor=TEXT)
+
+    ax.axvline(spot, color=MUTED, linestyle=":", linewidth=1)
+    ax.axvline(strike, color=MUTED, linestyle=":", linewidth=1, alpha=0.5)
+    ax.text(spot, 1.02, "Current price", transform=ax.get_xaxis_transform(),
+            ha="center", va="bottom", color=MUTED, fontsize=FONT_TICK)
+    ax.text(strike, 0.02, "Strike", transform=ax.get_xaxis_transform(),
+            ha="center", va="bottom", color=MUTED, fontsize=FONT_TICK,
+            bbox=dict(facecolor=PAGE_BG, edgecolor="none", pad=1.5))
+
+    ax.set_xlabel("Asset price ($)", color=TEXT, fontsize=FONT_LABEL)
+    ax.set_ylabel(ylabel, color=TEXT, fontsize=FONT_LABEL)
+    ax.tick_params(colors=TEXT, labelsize=FONT_TICK)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    for side in ("left", "bottom"):
+        ax.spines[side].set_color(MUTED)
+    ax.grid(True, color=MUTED, alpha=0.15)
+    ax.legend(facecolor=PAGE_BG, edgecolor=MUTED, labelcolor=TEXT, fontsize=FONT_TICK)
+    return fig
+
 
 def greeks_table(bs_model):
     """Return the Greeks for the call and put as a table, in the units traders quote."""
@@ -407,6 +495,18 @@ with tab_greeks:
         f"- **Rho:** if interest rates rise one percentage point, the call changes by about "
         f"{bs_model.call_rho / 100:+.2f} dollars and the put by about {bs_model.put_rho / 100:+.2f}."
     )
+
+    st.subheader("Greek explorer")
+    greek = st.selectbox("Choose a Greek", list(GREEKS))
+    chart_col, notes_col = st.columns(2)
+    with chart_col:
+        fig_greek = plot_greek(greek, bs_model)
+        st.pyplot(fig_greek)
+        plt.close(fig_greek)
+    with notes_col:
+        st.markdown(f"**How to read {greek.lower()}**")
+        st.write(GREEK_NOTES[greek])
+        st.caption("The dots mark where your option is right now.")
 
 
 # ---------- Footer ----------
