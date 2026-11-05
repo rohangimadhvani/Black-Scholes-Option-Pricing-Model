@@ -2,6 +2,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import seaborn as sns
 import streamlit as st
 
@@ -229,6 +230,28 @@ def plot_payoff(option_type, bs_model, show_profit):
     return fig
 
 
+def greeks_table(bs_model):
+    """Return the Greeks for the call and put as a table, in the units traders quote."""
+    rows = [
+        ("Delta", bs_model.call_delta, bs_model.put_delta,
+         "Change in option price when the asset price moves $1"),
+        ("Gamma", bs_model.gamma, bs_model.gamma,
+         "Change in delta when the asset price moves $1"),
+        ("Vega", bs_model.vega / 100, bs_model.vega / 100,
+         "Change in option price when volatility rises 1 percentage point"),
+        ("Theta", bs_model.call_theta / 365, bs_model.put_theta / 365,
+         "Change in option price as one day passes"),
+        ("Rho", bs_model.call_rho / 100, bs_model.put_rho / 100,
+         "Change in option price when the interest rate rises 1 percentage point"),
+    ]
+    return pd.DataFrame(
+        [
+            {"Greek": name, "Call": f"{call:.4f}", "Put": f"{put:.4f}", "What it measures": meaning}
+            for name, call, put, meaning in rows
+        ]
+    ).set_index("Greek")
+
+
 # ---------- Header ----------
 st.title("Options Lab")
 st.caption("Explore how Black-Scholes prices a European call and put.")
@@ -360,7 +383,30 @@ with tab_heatmaps:
             plt.close(fig_put)
 
 with tab_greeks:
-    st.info("The Greeks are coming in the next step.")
+    st.write(
+        "The Greeks measure how sensitive each option's price is to one input changing "
+        "while everything else stays the same."
+    )
+    st.table(greeks_table(bs_model))
+    st.caption(
+        "All values are per share, and one standard equity option contract usually covers "
+        "100 shares. Vega and rho are per 1 percentage point; theta is per day."
+    )
+
+    st.subheader("Reading your numbers")
+    st.markdown(
+        f"- **Delta:** if the asset rises \\$1, the call changes by about "
+        f"{bs_model.call_delta:+.2f} dollars and the put by about {bs_model.put_delta:+.2f}.\n"
+        f"- **Gamma:** each \\$1 move shifts delta itself by about {bs_model.gamma:.4f}, "
+        f"so these sensitivities keep changing as the price moves.\n"
+        f"- **Vega:** if volatility rises one percentage point, each option gains about "
+        f"{bs_model.vega / 100:.2f} dollars.\n"
+        f"- **Theta:** each day that passes, the call changes by about "
+        f"{bs_model.call_theta / 365:+.4f} dollars and the put by about "
+        f"{bs_model.put_theta / 365:+.4f}.\n"
+        f"- **Rho:** if interest rates rise one percentage point, the call changes by about "
+        f"{bs_model.call_rho / 100:+.2f} dollars and the put by about {bs_model.put_rho / 100:+.2f}."
+    )
 
 
 # ---------- Footer ----------
