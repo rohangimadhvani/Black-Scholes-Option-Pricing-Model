@@ -5,7 +5,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import streamlit as st
+from matplotlib.colors import LinearSegmentedColormap
 
+from analysis import pnl_grid
 from blackscholes import BlackScholes
 
 
@@ -249,6 +251,10 @@ def plot_payoff(option_type, bs_model, show_profit):
 
 VIOLET = "#C792EA"
 
+# Profit / loss colors: orange for losses, near the page color at break-even, green for profits.
+# They are dark enough for white numbers to stay readable on top.
+PNL_CMAP = LinearSegmentedColormap.from_list("pnl", ["#B45309", "#161B26", "#15803D"])
+
 # For each Greek: the call attribute, the put attribute (None if call and put are identical),
 # the display scale (vega and rho per 1 point, theta per day), and the y-axis label.
 GREEKS = {
@@ -336,6 +342,35 @@ def plot_greek(greek, bs_model):
         ax.spines[side].set_color(MUTED)
     ax.grid(True, color=MUTED, alpha=0.15)
     ax.legend(facecolor=PAGE_BG, edgecolor=MUTED, labelcolor=TEXT, fontsize=FONT_TICK)
+    return fig
+
+def plot_pnl_heatmap(option_type, bs_model, price_paid):
+    """Heatmap of profit or loss per share by asset price (across) and days to expiry (down)."""
+    spot, strike = bs_model.current_price, bs_model.strike
+    prices = np.linspace(min(spot, strike) * 0.75, max(spot, strike) * 1.25, 9)
+    years_left, pnl = pnl_grid(option_type, bs_model, price_paid, prices)
+
+    days_left = years_left * 365
+    day_labels = [f"{d:.0f}" if days_left[0] >= 20 else f"{d:.1f}" for d in days_left]
+
+    # A symmetric color scale keeps break-even exactly at the middle color.
+    limit = max(np.abs(pnl).max(), 1e-9)
+
+    fig, ax = plt.subplots(figsize=FIG_SIZE)
+    fig.patch.set_facecolor(PAGE_BG)
+    ax.set_facecolor(PAGE_BG)
+    sns.heatmap(
+        pnl, ax=ax, cmap=PNL_CMAP, vmin=-limit, vmax=limit,
+        annot=True, fmt=".2f", annot_kws={"size": FONT_TICK - 1, "color": TEXT},
+        xticklabels=np.round(prices, 2), yticklabels=day_labels,
+        linewidths=0.5, linecolor=PAGE_BG,
+    )
+    ax.set_xlabel("Asset price ($)", color=TEXT, fontsize=FONT_LABEL)
+    ax.set_ylabel("Days until expiry", color=TEXT, fontsize=FONT_LABEL)
+    ax.tick_params(colors=TEXT, labelsize=FONT_TICK)
+    colorbar = ax.collections[0].colorbar
+    colorbar.ax.tick_params(colors=TEXT, labelsize=FONT_TICK)
+    colorbar.outline.set_visible(False)
     return fig
 
 
@@ -463,6 +498,37 @@ with tab_payoff:
         "strike you would receive is paid later and is worth less today.) "
         "Profit / loss is per share and assumes you buy the option today at the price shown "
         "in the card above and hold it to expiry, ignoring fees."
+    )
+
+    st.subheader("Profit / loss over time")
+    st.write(
+        "Buy the option today and see what you would make or lose later. Each cell is the "
+        "profit or loss per share if the asset is at that price (across) with that many days "
+        "left (down). The top row is today and the bottom row is expiry day."
+    )
+    pnl_left, pnl_right = st.columns(2)
+    with pnl_left:
+        st.markdown("**Call option**")
+        paid_call = st.number_input(
+            "Price paid per share (call)", min_value=0.0, value=round(bs_model.call_price, 2),
+            step=0.01, format="%g",
+        )
+        fig_pnl_call = plot_pnl_heatmap("call", bs_model, paid_call)
+        st.pyplot(fig_pnl_call)
+        plt.close(fig_pnl_call)
+    with pnl_right:
+        st.markdown("**Put option**")
+        paid_put = st.number_input(
+            "Price paid per share (put)", min_value=0.0, value=round(bs_model.put_price, 2),
+            step=0.01, format="%g",
+        )
+        fig_pnl_put = plot_pnl_heatmap("put", bs_model, paid_put)
+        st.pyplot(fig_pnl_put)
+        plt.close(fig_pnl_put)
+    st.caption(
+        "Green is profit and orange is loss. The price paid starts at today's model price, "
+        "and you can change it to what you actually paid. This keeps volatility and the "
+        "interest rate fixed at the values above, and ignores fees."
     )
 
 with tab_heatmaps:
